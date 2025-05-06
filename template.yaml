@@ -1,0 +1,318 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: AWS::Serverless-2016-10-31
+Description: >
+  actual-leave-jcg
+
+  Sample SAM Template for actual-leave-jcg
+Globals:
+  Function:
+    Timeout: 15
+    LoggingConfig:
+      LogFormat: JSON
+
+Resources:
+  JCGLeaveTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: LeaveRequestsTableJCG
+      AttributeDefinitions:
+        - AttributeName: leaveID
+          AttributeType: S
+      KeySchema:
+        - AttributeName: leaveID
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+
+  JCGLeaveAPI:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: LeaveManagementAPI
+      StageName: Prod
+      Cors: "'*'"
+      Auth:
+        DefaultAuthorizer: JCGLeaveAuthorizer 
+        Authorizers:
+          JCGLeaveAuthorizer:
+            FunctionArn: !GetAtt JCGLeaveAuthorizerFunction.Arn
+            Identity:
+              Header: Authorization 
+
+  JCGLeaveAuthorizerFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/authorizer.ts
+        External:
+          - 'aws-lambda'
+    Properties:
+      CodeUri: ./
+      Handler: authorizer.authorizerHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Environment:
+        Variables:
+          JWT_SECRET: 'bXlzZWNyZXQta2V5LTI1Ni1iaXRzLXNob3VsZC1iZS1zZWN1cmUhIQ'
+
+  JCGLeaveApplyFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/applyLeave.ts
+        External:
+          - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/client-sfn'
+          - '@aws-sdk/lib-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: applyLeave.applyLeaveHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JCGLeaveTable
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:StartExecution
+              Resource: !Ref JCGLeaveStateMachine
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref JCGLeaveTable
+          SES_EMAIL: "gokul.jangam@antstack.io"
+          STATE_MACHINE_ARN: !Ref JCGLeaveStateMachine
+      Events:
+        ApplyLeave:
+          Type: Api
+          Properties:
+            Path: /apply-leave
+            Method: POST
+            RestApiId: !Ref JCGLeaveAPI
+            Auth:
+              Authorizer: JCGLeaveAuthorizer 
+
+  JCGLeaveSendApprovalEmailFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/sendApprovalEmail.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - 'aws-sdk'
+    Properties:
+      CodeUri: ./
+      Handler: sendApprovalEmail.sendApprovalEmailHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+      Environment:
+        Variables:
+          SES_EMAIL: "gokul.jangam@antstack.io"
+
+  JCGLeaveProcessApprovalFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/processApproval.ts
+        External:
+          - '@aws-sdk/client-sfn'
+    Properties:
+      CodeUri: ./
+      Handler: processApproval.processApprovalHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Policies:
+        - Statement:
+            - Effect: Allow
+              Action:
+                - states:SendTaskSuccess
+                - states:SendTaskFailure
+              Resource: "*"
+      Events:
+        ProcessApproval:
+          Type: Api
+          Properties:
+            Path: /process-approval
+            Method: GET
+            RestApiId: !Ref JCGLeaveAPI
+            Auth:
+              Authorizer: NONE 
+
+  RejectedNotifyUserFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/rejectedNotifyUser.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - '@aws-sdk/client-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: rejectedNotifyUser.notifyUserHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JCGLeaveTable
+      Environment:
+        Variables:
+          SES_EMAIL: "gokul.jangam@antstack.io"
+          TABLE_NAME: !Ref JCGLeaveTable
+  ApprovedNotifyUserFunction:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: esbuild
+      BuildProperties:
+        Minify: true
+        Target: es2020
+        Sourcemap: true
+        EntryPoints:
+          - lambdas/approvedNotifyUser.ts
+        External:
+          - '@aws-sdk/client-ses'
+          - '@aws-sdk/client-dynamodb'
+    Properties:
+      CodeUri: ./
+      Handler: approvedNotifyUser.notifyUserHandler
+      Runtime: nodejs22.x
+      Architectures:
+        - x86_64
+      Policies:
+        - AmazonSESFullAccess
+        - DynamoDBCrudPolicy:
+            TableName: !Ref JCGLeaveTable
+      Environment:
+        Variables:
+          SES_EMAIL: "gokul.jangam@antstack.io"
+          TABLE_NAME: !Ref JCGLeaveTable
+  JCGLeaveStateMachineExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: states.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: JCGLeaveStateMachinePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:InvokeFunction
+                Resource:
+                  - !GetAtt JCGLeaveProcessApprovalFunction.Arn
+                  - !GetAtt JCGLeaveSendApprovalEmailFunction.Arn
+                  - !GetAtt RejectedNotifyUserFunction.Arn
+                  - !GetAtt ApprovedNotifyUserFunction.Arn
+    
+  JCGLeaveStateMachine:
+    Type: AWS::StepFunctions::StateMachine
+    Properties:
+      StateMachineName: JCGLeaveStateMachine
+      RoleArn: !GetAtt JCGLeaveStateMachineExecutionRole.Arn
+      DefinitionString: !Sub |
+        {
+          "Comment": "Leave Management State Machine",
+          "StartAt": "SendApprovalEmail",
+          "States": {
+            "SendApprovalEmail": {
+              "Type": "Task",
+              "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+              "Parameters": {
+                "FunctionName": "${JCGLeaveSendApprovalEmailFunction.Arn}",
+                "Payload": {
+                  "leaveID.$": "$.leaveID",
+                  "userEmail.$": "$.userEmail",
+                  "approverEmail.$": "$.approverEmail",
+                  "leaveDetails.$": "$.leaveDetails",
+                  "taskToken.$": "$$.Task.Token",
+                  "apiBaseUrl.$": "$.apiBaseUrl"
+                }
+              },
+              "ResultPath": "$.approvalResult",
+              "TimeoutSeconds": 600,
+              "Next": "CheckApprovalStatus"
+            },
+            "CheckApprovalStatus": {
+              "Type": "Choice",
+              "Choices": [
+                {
+                  "Variable": "$.approvalResult.approvalStatus",
+                  "StringEquals": "Approved",
+                  "Next": "ApprovedNotifyUser"
+                },
+                {
+                  "Variable": "$.approvalResult.approvalStatus",
+                  "StringEquals": "Rejected",
+                  "Next": "RejectedNotifyUser"
+                }
+              ],
+              "Default": "FailState"
+            },
+            "RejectedNotifyUser": {
+              "Type": "Task",
+              "Resource": "${RejectedNotifyUserFunction.Arn}",
+              "Parameters": {
+                "leaveID.$": "$.leaveID",
+                "userEmail.$": "$.userEmail",
+                "leaveDetails.$": "$.leaveDetails",
+                "approvalStatus.$": "$.approvalResult.approvalStatus"
+              },
+              "End": true
+            },
+            "ApprovedNotifyUser": {
+              "Type": "Task",
+              "Resource": "${ApprovedNotifyUserFunction.Arn}",
+              "Parameters": {
+                "leaveID.$": "$.leaveID",
+                "userEmail.$": "$.userEmail",
+                "leaveDetails.$": "$.leaveDetails",
+                "approvalStatus.$": "$.approvalResult.approvalStatus"
+              },
+              "End": true
+            },
+            "FailState": {
+              "Type": "Fail",
+              "Cause": "Approval process failed or timed out"
+            }
+          }
+        }
+Outputs:
+  JCGLeaveAPIEndpoint:
+    Description: "API Gateway endpoint URL for Leave Management"
+    Value: !Sub "https://${JCGLeaveAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"

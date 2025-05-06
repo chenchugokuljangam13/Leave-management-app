@@ -1,0 +1,79 @@
+openapi: 3.0.0
+info:
+  title: Leave Management
+  version: 0.0.1
+  description: |-
+    Leave management is a Web application where a user can request for leave.
+    Then request will reach approver by mail using(SES).
+    Approver can either reject or approve the leave request.
+    Response will be sent to user.
+servers:
+  - url: https://01dcfl5zyd.execute-api.us-east-1.amazonaws.com/Prod
+    description: Endpoint for the user
+
+security:
+  - bearerAuth: []
+paths:
+  /apply-leave:
+    post:
+      summary: User can send request. 
+      description: |-
+        By using this URI user can send a request for the leave by providing
+        the required field in body and also by including JWT in header.
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          description: token
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/leaveRequest"
+              
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  leaveID:
+                    type: string
+            
+
+        '400':
+          description: Bad request
+          
+components:
+  securitySchemes:
+      bearerAuth:
+        type: http
+        scheme: bearer
+        bearerFormat: JWT
+  schemas:
+    leaveRequest:
+      type: object
+      description: JSON leave object
+      additionalProperties: false
+      required:
+        - employeeEmail
+        - startDate
+        - endDate
+      properties:
+        employeeEmail:
+          type: string
+        startDate:
+          type: string
+        endDate:
+          type: string
+        leaveType:
+          type: string
+        approverEmail:
+          type: string
