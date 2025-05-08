@@ -14,6 +14,4 @@ export const idGeneratorFun= (): string => {
         res += chars.charAt(randomInd);
     }
     return res;
-  }
-
-
+}

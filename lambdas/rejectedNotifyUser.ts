@@ -9,7 +9,6 @@ interface Event {
 }
 
 export const notifyUserHandler = async (event: Event) => {
-  console.log(event)
   const leaveID = event?.leaveID;
   const userEmail = event?.userEmail;
   const leaveDetails = event?.leaveDetails;

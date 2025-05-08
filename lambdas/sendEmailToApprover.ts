@@ -10,7 +10,7 @@ interface Event {
   apiBaseUrl?: string
 }
 
-export const sendApprovalEmailHandler = async (event: Event) => {
+export const sendEmailToApproverHandler = async (event: Event) => {
   try {
     const { leaveID, userEmail, approverEmail, leaveDetails, taskToken, apiBaseUrl  } = event;
     if (!leaveID || !userEmail || !approverEmail || !leaveDetails || !taskToken || !apiBaseUrl) {

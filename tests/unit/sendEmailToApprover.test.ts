@@ -1,5 +1,5 @@
 import {mockClient} from 'aws-sdk-client-mock';
-import {sendApprovalEmailHandler} from '../../lambdas/sendApprovalEmail'
+import {sendEmailToApproverHandler} from '../../lambdas/sendEmailToApprover'
 import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
 const sesMock = mockClient(SESClient);
 interface Event {
@@ -17,7 +17,7 @@ describe('unit test for app handler', function() {
         sesMock.reset();
     })
     test('fail case for missing params', async() => {
-        const result = await sendApprovalEmailHandler(event);
+        const result = await sendEmailToApproverHandler(event);
         expect(result.statusCode).toBe(400);
         expect(JSON.parse(result.body).message).toEqual('Missing parameters in the Event')
     })
@@ -37,7 +37,7 @@ describe('unit test for app handler', function() {
             apiBaseUrl: "www.world.com"
         }
         sesMock.on(SendEmailCommand).resolves({})
-        const result = await sendApprovalEmailHandler(event1);
+        const result = await sendEmailToApproverHandler(event1);
         expect(result.statusCode).toBe(200);
         expect(JSON.parse(result.body).message).toEqual("Message sent to Approver");
     })
@@ -57,7 +57,7 @@ describe('unit test for app handler', function() {
             apiBaseUrl: "www.world.com"
         }
         sesMock.on(SendEmailCommand).rejects(new Error('some error while sending email'))
-        const result = await sendApprovalEmailHandler(event1);
+        const result = await sendEmailToApproverHandler(event1);
         expect(result.statusCode).toBe(500);
         expect(JSON.parse(result.body).message).toEqual("Failed to send email");
     })

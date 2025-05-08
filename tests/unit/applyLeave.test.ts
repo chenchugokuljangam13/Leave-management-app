@@ -88,7 +88,7 @@ describe('unit test for app handler', function() {
           approverEmail: "def@example.com",
           employeeEmail: "abc@example.com"
         });
-      
+          
         // Simulate failure in DynamoDB PutCommand
         ddbMock.on(PutCommand).rejects(new Error("DynamoDB Error"));
       

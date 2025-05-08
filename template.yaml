@@ -102,7 +102,7 @@ Resources:
             Auth:
               Authorizer: JCGLeaveAuthorizer 
 
-  JCGLeaveSendApprovalEmailFunction:
+  JCGLeaveSendEmailToApproverFunction:
     Type: AWS::Serverless::Function
     Metadata:
       BuildMethod: esbuild
@@ -111,13 +111,13 @@ Resources:
         Target: es2020
         Sourcemap: true
         EntryPoints:
-          - lambdas/sendApprovalEmail.ts
+          - lambdas/sendEmailToApprover.ts
         External:
           - '@aws-sdk/client-ses'
           - 'aws-sdk'
     Properties:
       CodeUri: ./
-      Handler: sendApprovalEmail.sendApprovalEmailHandler
+      Handler: sendEmailToApprover.sendEmailToApproverHandler
       Runtime: nodejs22.x
       Architectures:
         - x86_64
@@ -238,7 +238,7 @@ Resources:
                   - lambda:InvokeFunction
                 Resource:
                   - !GetAtt JCGLeaveProcessApprovalFunction.Arn
-                  - !GetAtt JCGLeaveSendApprovalEmailFunction.Arn
+                  - !GetAtt JCGLeaveSendEmailToApproverFunction.Arn
                   - !GetAtt RejectedNotifyUserFunction.Arn
                   - !GetAtt ApprovedNotifyUserFunction.Arn
     
@@ -250,13 +250,13 @@ Resources:
       DefinitionString: !Sub |
         {
           "Comment": "Leave Management State Machine",
-          "StartAt": "SendApprovalEmail",
+          "StartAt": "SendEmailToApprover",
           "States": {
-            "SendApprovalEmail": {
+            "SendEmailToApprover": {
               "Type": "Task",
               "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
               "Parameters": {
-                "FunctionName": "${JCGLeaveSendApprovalEmailFunction.Arn}",
+                "FunctionName": "${JCGLeaveSendEmailToApproverFunction.Arn}",
                 "Payload": {
                   "leaveID.$": "$.leaveID",
                   "userEmail.$": "$.userEmail",
