@@ -31,10 +31,5 @@ jobs:
         - run: sam build 
         # Prevent prompts and failure when the stack is unchanged
         - run: |
-            sam deploy --stack-name ${{secrets.stackName}} \
-            --region us-east-1 \
-            --resolve-s3 \
-            --capabilities CAPABILITY_IAM CAPABILITY_AUTO_EXPAND \
-            --no-confirm-changeset \
-            --no-fail-on-empty-changeset
+            sam deploy --stack-name ${{secrets.stackName}}
             
