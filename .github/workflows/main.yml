@@ -29,6 +29,7 @@ jobs:
           aws-region: us-east-1
       - run: npm i
       - run: npm run unit
+      - run: npm install -g esbuild
       - name: Build SAM Application
         run: sam build 
       - name: Deploy SAM Application
