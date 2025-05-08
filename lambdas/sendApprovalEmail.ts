@@ -1,21 +1,25 @@
 import {sendEmailBySES} from './utils/sesHelper'
 
 interface Event {
-  approvalStatus: string,
-  leaveDetails: Record<string, string>,
-  leaveID: string,
-  userEmail: string,
-  approverEmail: string,
-  taskToken: string,
-  apiBaseUrl: string
+  approvalStatus?: string,
+  leaveDetails?: Record<string, string>,
+  leaveID?: string,
+  userEmail?: string,
+  approverEmail?: string,
+  taskToken?: string,
+  apiBaseUrl?: string
 }
 
 export const sendApprovalEmailHandler = async (event: Event) => {
-  console.log(event)
   try {
     const { leaveID, userEmail, approverEmail, leaveDetails, taskToken, apiBaseUrl  } = event;
     if (!leaveID || !userEmail || !approverEmail || !leaveDetails || !taskToken || !apiBaseUrl) {
-      throw new Error("Missing required fields in event object");
+      return {
+        statusCode: 400,
+        body: JSON.stringify({
+          message: "Missing parameters in the Event"
+        }),
+      };
     }
     // we send these two links to invoke another process approval lambda
     const approvalLink = `${apiBaseUrl}/process-approval?leaveID=${leaveID}&status=Approved&taskToken=${encodeURIComponent(taskToken)}`;
@@ -56,6 +60,12 @@ export const sendApprovalEmailHandler = async (event: Event) => {
     };
     // sends the mail to approver
     await sendEmailBySES(emailParams);
+    return {
+      statusCode: 200,
+      body: JSON.stringify({
+        message: "Message sent to Approver"
+      }),
+    };
   } catch(error) {
     return {
       statusCode: 500,

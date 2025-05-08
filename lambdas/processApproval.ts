@@ -2,14 +2,13 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {sfsSendSuccessfulMsgFun} from './utils/sfsHelper'
 
 export const processApprovalHandler = async (event:APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  console.log(event);
   const status = event.queryStringParameters?.status;
   const taskToken = event.queryStringParameters?.taskToken;
   if (!status || !taskToken) {
     return {
       statusCode: 400,
       body: JSON.stringify({
-        message: "Missing required query parameters: 'status' and 'taskToken'",
+        message: "Missing required query parameters: status and taskToken",
       }),
     };
   }

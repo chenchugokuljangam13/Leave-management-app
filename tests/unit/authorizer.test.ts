@@ -1,7 +1,6 @@
 import { APIGatewayTokenAuthorizerEvent, APIGatewayAuthorizerResult } from 'aws-lambda';
 import {authorizerHandler} from '../../lambdas/authorizer';
 import * as jwt from 'jsonwebtoken';
-
 const event: APIGatewayTokenAuthorizerEvent = {
     type: 'TOKEN',
     methodArn: 'arn:aws:execute-api:region:account-id:api-id/stage/GET/resource',

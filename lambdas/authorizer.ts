@@ -1,8 +1,9 @@
 import { APIGatewayTokenAuthorizerEvent, APIGatewayAuthorizerResult } from 'aws-lambda';
-import {decodingJWT} from './utils/jwtTokenDecoding'
+import {decodingJWT} from './utils/commonHelper';
+const secret = process.env.JWT_SECRET as string;
 export const authorizerHandler = async (event: APIGatewayTokenAuthorizerEvent): Promise<APIGatewayAuthorizerResult> => {
-  const secret = process.env.JWT_SECRET as string;
   try {
+    console.log('secret',secret)
     const token: string = event.authorizationToken;
     // decodes the token and validates with secret key
     const decoded = decodingJWT(token, secret)
@@ -17,7 +18,7 @@ export const authorizerHandler = async (event: APIGatewayTokenAuthorizerEvent): 
 };
 
 // for generating Auth policy for Both allow and deny
-const generatePolicy = (principalID:string, effect:any, resource:string) =>{
+const generatePolicy = (principalID:string, effect:'Allow'|'Deny', resource:string) =>{
   const authResponse:APIGatewayAuthorizerResult = {
     principalId: principalID,
     policyDocument: {

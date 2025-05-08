@@ -2,14 +2,13 @@ import {ddbUpdateCommandHelper} from './utils/ddbHelpers'
 import {sendEmailBySES} from './utils/sesHelper'
 
 interface Event {
-  approvalStatus: string,
-  leaveDetails: Record<string, string>,
-  leaveID: string,
-  userEmail: string
+  approvalStatus?: string,
+  leaveDetails?: Record<string, string>,
+  leaveID?: string,
+  userEmail?: string
 }
 
 export const notifyUserHandler = async (event: Event) => {
-  console.log(event)
   const leaveID = event?.leaveID;
   const userEmail = event?.userEmail;
   const leaveDetails = event?.leaveDetails;
@@ -17,7 +16,9 @@ export const notifyUserHandler = async (event: Event) => {
   if (!leaveID || !userEmail || !leaveDetails || !approvalStatus) {
     return {
       statusCode: 400,
-      body: JSON.stringify({ message: "Missing required input fields" }),
+      body: JSON.stringify({
+        message: "Missing required input fields"
+      }),
     };
   }
   try {
@@ -37,10 +38,11 @@ export const notifyUserHandler = async (event: Event) => {
     // changes the status of item in Db
     await ddbUpdateCommandHelper(data)
   } catch(error) {
-    console.log(error)
     return {
       statusCode: 500,
-      body: JSON.stringify({message: 'Data unable to send to DynamoDB'})
+      body: JSON.stringify({
+        message: 'Data unable to send to DynamoDB'
+      })
     }
   }
   const emailParams = {

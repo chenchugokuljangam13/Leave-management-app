@@ -46,8 +46,6 @@ paths:
                     type: string
                   leaveID:
                     type: string
-            
-
         '400':
           description: Bad request
           

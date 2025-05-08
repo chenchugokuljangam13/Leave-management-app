@@ -1,6 +1,6 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {ddbPutCommandHelper} from './utils/ddbHelpers'
-import {idGeneratorFun} from './utils/idGenerator'
+import {idGeneratorFun} from './utils/commonHelper'
 import {sfsStartExecutionFun} from './utils/sfsHelper'
 const TABLE_NAME = process.env.TABLE_NAME!;
 const STATE_MACHINE_ARN = process.env.STATE_MACHINE_ARN!;

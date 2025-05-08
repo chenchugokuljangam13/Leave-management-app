@@ -2,10 +2,10 @@ import {ddbUpdateCommandHelper} from './utils/ddbHelpers'
 import {sendEmailBySES} from './utils/sesHelper'
 
 interface Event {
-  approvalStatus: string,
-  leaveDetails: Record<string, string>,
-  leaveID: string,
-  userEmail: string
+  approvalStatus?: string,
+  leaveDetails?: Record<string, string>,
+  leaveID?: string,
+  userEmail?: string
 }
 
 export const notifyUserHandler = async (event: Event) => {
