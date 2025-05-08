@@ -28,9 +28,9 @@ jobs:
           aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
           aws-region: us-east-1
       - run: npm i
+      - run: npm run unit
       - name: Build SAM Application
-        run: sam build --use-container
-
+        run: sam build 
       - name: Deploy SAM Application
         run: |
           sam deploy \
