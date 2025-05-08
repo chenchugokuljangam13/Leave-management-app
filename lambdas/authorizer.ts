@@ -1,18 +1,11 @@
-import * as jwt from 'jsonwebtoken';
 import { APIGatewayTokenAuthorizerEvent, APIGatewayAuthorizerResult } from 'aws-lambda';
-
+import {decodingJWT} from './utils/jwtTokenDecoding'
 export const authorizerHandler = async (event: APIGatewayTokenAuthorizerEvent): Promise<APIGatewayAuthorizerResult> => {
+  const secret = process.env.JWT_SECRET as string;
   try {
-    const token = event.authorizationToken;
-    const secret = process.env.JWT_SECRET;
-    if (!token) {
-      throw new Error(`Missing Auth Token`);
-    }
-    if (!secret) {
-      throw new Error('Missing JWT_SECRET environment variable');
-    }
+    const token: string = event.authorizationToken;
     // decodes the token and validates with secret key
-    const decoded = jwt.verify(token, secret) as { email: string };
+    const decoded = decodingJWT(token, secret)
     // generates allow policy for Authorizers
     const allowPolicy:APIGatewayAuthorizerResult = generatePolicy(decoded.email, 'Allow', event.methodArn)
     return allowPolicy;

@@ -1,7 +1,5 @@
-import { SFNClient, SendTaskSuccessCommand } from "@aws-sdk/client-sfn";
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-
-const sfn = new SFNClient({region:'us-east-1'});
+import {sfsSendSuccessfulMsgFun} from './utils/sfsHelper'
 
 export const processApprovalHandler = async (event:APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   console.log(event);
@@ -17,10 +15,7 @@ export const processApprovalHandler = async (event:APIGatewayProxyEvent): Promis
   }
   try {
     // resume the step function by using task token
-    await sfn.send(new SendTaskSuccessCommand({
-    taskToken,
-    output: JSON.stringify({ approvalStatus: status })
-    }));
+    await sfsSendSuccessfulMsgFun(taskToken, status)
     return {
       statusCode: 200,
       body: `you have ${status} the leave request`

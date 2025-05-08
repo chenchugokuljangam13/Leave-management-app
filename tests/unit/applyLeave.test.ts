@@ -1,65 +1,103 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda';
 import {applyLeaveHandler} from '../../lambdas/applyLeave';
-import { expect, describe, it } from '@jest/globals';
-
-describe('Unit test for app handler', function () {
-    it('verifies successful response', async () => {
-        const event: APIGatewayProxyEvent = {
-            httpMethod: 'get',
+import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
+import { DynamoDBDocumentClient, PutCommand } from "@aws-sdk/lib-dynamodb";
+import { SFNClient, StartExecutionCommand } from "@aws-sdk/client-sfn";
+import {mockClient} from 'aws-sdk-client-mock'
+process.env.TABLE_NAME = 'myTable';
+const ddbMock = mockClient(DynamoDBDocumentClient);
+const sfsMock = mockClient(SFNClient);
+const event:APIGatewayProxyEvent = 
+        {
             body: '',
             headers: {},
-            isBase64Encoded: false,
             multiValueHeaders: {},
-            multiValueQueryStringParameters: {},
-            path: '/hello',
-            pathParameters: {},
-            queryStringParameters: {},
+            httpMethod: '',
+            isBase64Encoded: false,
+            path: '',
+            pathParameters: null,
+            queryStringParameters: null,
+            multiValueQueryStringParameters: null,
+            stageVariables: null,
             requestContext: {
-                accountId: '123456789012',
-                apiId: '1234',
-                authorizer: {},
-                httpMethod: 'get',
+                accountId: '',
+                apiId: '',
+                authorizer: undefined,
+                protocol: '',
+                httpMethod: '',
                 identity: {
-                    accessKey: '',
-                    accountId: '',
-                    apiKey: '',
-                    apiKeyId: '',
-                    caller: '',
-                    clientCert: {
-                        clientCertPem: '',
-                        issuerDN: '',
-                        serialNumber: '',
-                        subjectDN: '',
-                        validity: { notAfter: '', notBefore: '' },
-                    },
-                    cognitoAuthenticationProvider: '',
-                    cognitoAuthenticationType: '',
-                    cognitoIdentityId: '',
-                    cognitoIdentityPoolId: '',
-                    principalOrgId: '',
+                    accessKey: null,
+                    accountId: null,
+                    apiKey: null,
+                    apiKeyId: null,
+                    caller: null,
+                    clientCert: null,
+                    cognitoAuthenticationProvider: null,
+                    cognitoAuthenticationType: null,
+                    cognitoIdentityId: null,
+                    cognitoIdentityPoolId: null,
+                    principalOrgId: null,
                     sourceIp: '',
-                    user: '',
-                    userAgent: '',
-                    userArn: '',
+                    user: null,
+                    userAgent: null,
+                    userArn: null
                 },
-                path: '/hello',
-                protocol: 'HTTP/1.1',
-                requestId: 'c6af9ac6-7b61-11e6-9a41-93e8deadbeef',
-                requestTimeEpoch: 1428582896000,
-                resourceId: '123456',
-                resourcePath: '/hello',
-                stage: 'dev',
+                path: '',
+                stage: '',
+                requestId: '',
+                requestTimeEpoch: 0,
+                resourceId: '',
+                resourcePath: ''
             },
-            resource: '',
-            stageVariables: {},
+            resource: ''
         };
-        const result: APIGatewayProxyResult = await lambdaHandler(event);
-
-        expect(result.statusCode).toEqual(200);
+describe('unit test for app handler', function() {
+    beforeEach(() => {
+        ddbMock.reset();
+        sfsMock.reset();
+        process.env.TABLE_NAME = 'myTable';
+        process.env.STATE_MACHINE_ARN = "arn:aws:states:us-east-1:123456789012:stateMachine:myStateMachine"
+    })
+    test('should return 400 if required fields are missing', async() => {
+        const result: APIGatewayProxyResult = await applyLeaveHandler(event);
+        expect(result.statusCode).toBe(400);
         expect(result.body).toEqual(
             JSON.stringify({
-                message: 'hello world',
-            }),
-        );
-    });
-});
+                message: "Missing required fields"
+            })
+        )
+    })
+    test('should apply leave and return 200 with valid input', async() => {
+        event.body = JSON.stringify({
+            leaveType: "abc",
+            startDate: "20-05-25",
+            endDate: "20-05-25",
+            approverEmail: "def@example.com",
+            employeeEmail: 'abc@example.com'
+        });
+        ddbMock.on(PutCommand).resolves({});
+        sfsMock.on(StartExecutionCommand).resolves({});
+        const result: APIGatewayProxyResult = await applyLeaveHandler(event);
+        expect(result.statusCode).toBe(200);
+        expect(JSON.parse(result.body).message).toMatch(/^Leave applied LEAVE-[A-Za-z0-9]{8}$/)
+    })
+    test('should return 500 if DynamoDB throws an error', async () => {
+        event.body = JSON.stringify({
+          leaveType: "abc",
+          startDate: "20-05-25",
+          endDate: "20-05-25",
+          approverEmail: "def@example.com",
+          employeeEmail: "abc@example.com"
+        });
+      
+        // Simulate failure in DynamoDB PutCommand
+        ddbMock.on(PutCommand).rejects(new Error("DynamoDB Error"));
+      
+        const result: APIGatewayProxyResult = await applyLeaveHandler(event);
+      
+        expect(result.statusCode).toBe(500);
+        expect(JSON.parse(result.body).message).toBe("Internal server error");
+      });
+})
+
+
+

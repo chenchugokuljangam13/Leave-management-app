@@ -175,6 +175,7 @@ Resources:
         External:
           - '@aws-sdk/client-ses'
           - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
     Properties:
       CodeUri: ./
       Handler: rejectedNotifyUser.notifyUserHandler
@@ -202,6 +203,7 @@ Resources:
         External:
           - '@aws-sdk/client-ses'
           - '@aws-sdk/client-dynamodb'
+          - '@aws-sdk/lib-dynamodb'
     Properties:
       CodeUri: ./
       Handler: approvedNotifyUser.notifyUserHandler

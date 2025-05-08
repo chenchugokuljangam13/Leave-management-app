@@ -1,21 +1,12 @@
-import { SESClient, SendEmailCommand } from "@aws-sdk/client-ses";
-import { DynamoDBClient, UpdateItemCommand } from "@aws-sdk/client-dynamodb";
+import {ddbUpdateCommandHelper} from './utils/ddbHelpers'
+import {sendEmailBySES} from './utils/sesHelper'
 
-interface leaveDetails {
-  leaveType: string,
-  startDate: string,
-  endDate: string,
-  reason: string
-}
 interface Event {
   approvalStatus: string,
-  leaveDetails: leaveDetails,
+  leaveDetails: Record<string, string>,
   leaveID: string,
   userEmail: string
 }
-
-const sesClient = new SESClient({});
-const dynamo = new DynamoDBClient({});
 
 export const notifyUserHandler = async (event: Event) => {
   console.log(event)
@@ -29,22 +20,22 @@ export const notifyUserHandler = async (event: Event) => {
       body: JSON.stringify({ message: "Missing required input fields" }),
     };
   }
-  const data = {
-    TableName: process.env.TABLE_NAME,
-    Key: {
-      leaveID: {S: leaveID}
-    },
-    UpdateExpression: "SET #s = :newStatus",
-    ExpressionAttributeNames: {
-      "#s": "status",
-    }, 
-    ExpressionAttributeValues: {
-      ":newStatus": { S: `${approvalStatus}` },
-    },
-  }
   try {
+    const data = {
+      TableName: process.env.TABLE_NAME!,
+      Key: {
+        leaveID: leaveID, // string value directly
+      },
+      UpdateExpression: "SET #s = :newStatus",
+      ExpressionAttributeNames: {
+        "#s": "status",
+      },
+      ExpressionAttributeValues: {
+        ":newStatus": approvalStatus, // string value directly
+      },
+    };
     // changes the status of item in Db
-    await dynamo.send(new UpdateItemCommand(data))
+    await ddbUpdateCommandHelper(data)
   } catch(error) {
     console.log(error)
     return {
@@ -56,26 +47,25 @@ export const notifyUserHandler = async (event: Event) => {
     Destination: { ToAddresses: [userEmail] },
     Message: {
       Body: {
-        Text: {
+        Html: {
           Data: `
-            Your Leave Request status has been changed to ${approvalStatus}
-            Details-
-              Employee: ${userEmail}
-              Leave Type: ${leaveDetails.leaveType}
-              From: ${leaveDetails.startDate}
-              To: ${leaveDetails.endDate}
-              Reason: ${leaveDetails.reason}
+            <h4>Your Leave Request status has been changed to ${approvalStatus}</h4>
+            <h5>Details of your leave request ${leaveID}</h5>
+            <p>Leave Type - ${leaveDetails.leaveType}</p>
+            <p>Start Date - ${leaveDetails.startDate}</p>
+            <p>End Date - ${leaveDetails.endDate}</p>
+            <p>Reason for the leave is ${leaveDetails.reason}</p>
           `
         }
       },
-      Subject: { Data: `Status of your leave request ${leaveID}` },
+      Subject: { Data: `Status of your leave request` },
     },
     Source: "jangamchenchugokul@gmail.com"
   };
   try {
     // it will send an email to user
-    const response = await sesClient.send(new SendEmailCommand(emailParams));
-    console.log(response)
+    await sendEmailBySES(emailParams);
+    
     return {
       statusCode: 200,
       body: JSON.stringify({
