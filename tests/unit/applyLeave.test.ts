@@ -78,7 +78,7 @@ describe('unit test for app handler', function() {
         sfsMock.on(StartExecutionCommand).resolves({});
         const result: APIGatewayProxyResult = await applyLeaveHandler(event);
         expect(result.statusCode).toBe(200);
-        expect(JSON.parse(result.body).message).toMatch(/^Leave applied LEAVE-[A-Za-z0-9]{8}$/)
+        expect(JSON.parse(result.body).message).toMatch(/^Leave applied ID-[0-9]{13}$/)
     })
     test('should return 500 if DynamoDB throws an error', async () => {
         event.body = JSON.stringify({
@@ -88,7 +88,7 @@ describe('unit test for app handler', function() {
           approverEmail: "def@example.com",
           employeeEmail: "abc@example.com"
         });
-          
+
         // Simulate failure in DynamoDB PutCommand
         ddbMock.on(PutCommand).rejects(new Error("DynamoDB Error"));
       

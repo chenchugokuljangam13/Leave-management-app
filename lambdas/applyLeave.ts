@@ -1,7 +1,9 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import {ddbPutCommandHelper} from './utils/ddbHelpers'
-import {idGeneratorFun} from './utils/commonHelper'
+// import {idGeneratorFun} from './utils/commonHelper'
 import {sfsStartExecutionFun} from './utils/sfsHelper'
+import { time } from "console";
+import { get } from "http";
 const TABLE_NAME = process.env.TABLE_NAME!;
 const STATE_MACHINE_ARN = process.env.STATE_MACHINE_ARN!;
 
@@ -15,13 +17,12 @@ export const applyLeaveHandler = async (event: APIGatewayProxyEvent): Promise<AP
     const endDate = body.endDate;
     const reason = body.reason || "Not provided";
 
-
     if (!leaveType || !startDate || !endDate || !approverEmail || !userEmail) {
       return { statusCode: 400, body: JSON.stringify({ message: "Missing required fields" }) };
     }
 
     // generates unique id
-    const leaveID = `LEAVE-${idGeneratorFun()}`;
+    const leaveID = `ID-${Date.now()}`;
 
     // it will we used in further states to send in emails and trigger endpoint
     const apiBaseUrl = `https://${event.requestContext.domainName}/${event.requestContext.stage}`;
@@ -34,7 +35,7 @@ export const applyLeaveHandler = async (event: APIGatewayProxyEvent): Promise<AP
       endDate,
       reason,
       status: "Pending"
-  }
+    }
     // add the leave details item in Dynamo Db
     await ddbPutCommandHelper(
       TABLE_NAME,
@@ -51,6 +52,7 @@ export const applyLeaveHandler = async (event: APIGatewayProxyEvent): Promise<AP
       },
       apiBaseUrl
     }
+    // starts executing step function
     await sfsStartExecutionFun(STATE_MACHINE_ARN,inputForSFS)
     return {
       statusCode: 200,
