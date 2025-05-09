@@ -1,0 +1,66 @@
+{
+    "Comment": "Leave Management State Machine",
+    "StartAt": "SendEmailToApprover",
+    "States": {
+        "SendEmailToApprover": {
+            "Type": "Task",
+            "Resource": "arn:aws:states:::lambda:invoke.waitForTaskToken",
+            "Parameters": {
+                "FunctionName": "${JCGLeaveSendEmailToApproverFunction.Arn}",
+                "Payload": {
+                    "leaveID.$": "$.leaveID",
+                    "userEmail.$": "$.userEmail",
+                    "approverEmail.$": "$.approverEmail",
+                    "leaveDetails.$": "$.leaveDetails",
+                    "taskToken.$": "$$.Task.Token",
+                    "apiBaseUrl.$": "$.apiBaseUrl"
+                }
+            },
+            "ResultPath": "$.approvalResult",
+            "TimeoutSeconds": 600,
+            "Next": "CheckApprovalStatus"
+        },
+        "CheckApprovalStatus": {
+            "Type": "Choice",
+            "Choices": [
+                {
+                    "Variable": "$.approvalResult.approvalStatus",
+                    "StringEquals": "Approved",
+                    "Next": "ApprovedNotifyUser"
+                },
+                {
+                    "Variable": "$.approvalResult.approvalStatus",
+                    "StringEquals": "Rejected",
+                    "Next": "RejectedNotifyUser"
+                }
+            ],
+            "Default": "FailState"
+        },
+        "RejectedNotifyUser": {
+            "Type": "Task",
+            "Resource": "${RejectedNotifyUserFunction.Arn}",
+            "Parameters": {
+                "leaveID.$": "$.leaveID",
+                "userEmail.$": "$.userEmail",
+                "leaveDetails.$": "$.leaveDetails",
+                "approvalStatus.$": "$.approvalResult.approvalStatus"
+            },
+            "End": true
+        },
+        "ApprovedNotifyUser": {
+            "Type": "Task",
+            "Resource": "${ApprovedNotifyUserFunction.Arn}",
+            "Parameters": {
+                "leaveID.$": "$.leaveID",
+                "userEmail.$": "$.userEmail",
+                "leaveDetails.$": "$.leaveDetails",
+                "approvalStatus.$": "$.approvalResult.approvalStatus"
+            },
+            "End": true
+        },
+        "FailState": {
+            "Type": "Fail",
+            "Cause": "Approval process failed or timed out"
+        }
+    }
+}

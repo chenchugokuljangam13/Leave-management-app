@@ -124,6 +124,9 @@ To delete the sample application that you created, use the AWS CLI. Assuming you
 ```bash
 sam delete --stack-name Leave-Management-2
 ```
+## Architecture of leave management app
+
+![Architecture Diagram](ADFLMA.png)
 
 ## Resources
 
